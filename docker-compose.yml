@@ -1,0 +1,9 @@
+version: "3.9"
+
+services:
+  scraper:
+    build: .
+    container_name: immobilier_scraper
+    volumes:
+      - .:/app
+    command: scrapy crawl immo_senegal -o data.json
