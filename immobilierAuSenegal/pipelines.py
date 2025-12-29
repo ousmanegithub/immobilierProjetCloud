@@ -18,7 +18,7 @@ class S3UploadPipeline:
         # Configuration S3
         settings = get_project_settings()
         self.bucket_name = "m2dsia-faye-ousmane" # Remplacez par votre nom de bucket exact
-        self.s3_object_name = "dernieres_annonces_senegal.json"
+        self.s3_object_name = "dernieres_annonces_senegal.ndjson"
         self.local_file_path = 'data/resultats.json'
         self.s3 = boto3.client("s3")
 

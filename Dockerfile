@@ -20,4 +20,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["scrapy", "crawl", "immo_senegal", "-o", "annonces.ndjson", "-t", "jsonlines"]
+CMD ["scrapy", "crawl", "immo_senegal" ]
