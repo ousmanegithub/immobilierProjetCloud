@@ -1,52 +1,51 @@
-# immobilierAuSenegal/pipelines.py
 import json
 import boto3
 import os
+from datetime import datetime
 from scrapy.utils.project import get_project_settings
 
 class S3UploadPipeline:
+
     def open_spider(self, spider):
-        """Initialise le fichier JSON local au début du spider."""
-        # Assurez-vous que le dossier 'data' existe
-        if not os.path.exists('data'):
-            os.makedirs('data')
-            
-        self.file = open('data/resultats.json', 'w', encoding='utf-8')
-        self.file.write('[')
-        self.first_item = True
-        
-        # Configuration S3
-        settings = get_project_settings()
-        self.bucket_name = "m2dsia-faye-ousmane" # Remplacez par votre nom de bucket exact
-        self.s3_object_name = "dernieres_annonces_senegal.ndjson"
-        self.local_file_path = 'data/resultats.json'
+        # Créer le dossier data si absent
+        os.makedirs("data", exist_ok=True)
+
+        # Fichier NDJSON
+        self.local_file_path = "data/dernieres_annonces_senegal.ndjson"
+        self.file = open(self.local_file_path, "w", encoding="utf-8")
+
+        # S3
+        self.bucket_name = "m2dsia-faye-ousmane"
+        self.s3_object_name = "input/dernieres_annonces_senegal.ndjson"
         self.s3 = boto3.client("s3")
 
-    def close_spider(self, spider):
-        """Ferme le fichier JSON local et lance l'upload S3 à la fin du spider."""
-        self.file.write(']')
-        self.file.close()
-        
-        spider.logger.info(f"Fichier local créé : {self.local_file_path}")
-        self.upload_to_s3(spider)
-        spider.logger.info(f"Upload vers S3://{self.bucket_name}/{self.s3_object_name} terminé.")
-
     def process_item(self, item, spider):
-        """Écrit chaque item dans le fichier JSON."""
-        if not self.first_item:
-            self.file.write(',')
-        else:
-            self.first_item = False
-            
-        # Utilisation de json.dumps pour formater correctement l'item en JSON
-        line = json.dumps(dict(item), ensure_ascii=False, indent=4)
-        self.file.write(line)
+        record = {
+            "url_annonce": item.get("url_annonce"),
+            "type_de_bien": item.get("type_de_bien"),
+            "localisation": item.get("localisation"),
+            "prix": item.get("prix"),
+            "chambres": item.get("chambres"),
+            "salles_de_bains": item.get("salles_de_bains"),
+            "date_scraping": datetime.utcnow().isoformat() + "Z"
+        }
+
+        # 1 ligne = 1 objet JSON
+        self.file.write(json.dumps(record, ensure_ascii=False) + "\n")
         return item
 
-    def upload_to_s3(self, spider):
-        """Fonction utilitaire pour l'upload S3."""
-        try:
-            self.s3.upload_file(self.local_file_path, self.bucket_name, self.s3_object_name)
-        except Exception as e:
-            spider.logger.error(f"Erreur lors de l'upload S3 : {e}")
+    def close_spider(self, spider):
+        self.file.close()
+        spider.logger.info("Fichier NDJSON généré")
 
+        try:
+            self.s3.upload_file(
+                self.local_file_path,
+                self.bucket_name,
+                self.s3_object_name
+            )
+            spider.logger.info(
+                f"Upload S3 terminé : s3://{self.bucket_name}/{self.s3_object_name}"
+            )
+        except Exception as e:
+            spider.logger.error(f"Erreur upload S3 : {e}")
